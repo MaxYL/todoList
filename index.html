@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		<link rel="stylesheet" type="text/css" href="node_modules/todomvc-app-css/index.css" />
+	</head>
+
+	<body>
+		<script src="../01-vue-render/vue.js" type="text/javascript" charset="utf-8"></script>
+		<script src="node_modules/underscore/underscore-min.js" type="text/javascript" charset="utf-8"></script>
+		<script type="text/javascript" src="js/store.js" charset="UTF-8"></script>
+		<section class="todoapp">
+			<header class="header">
+				<h1>云麋鹿</h1>
+				<input v-model="newtodo" @keyup.enter.trim="newTodo" class="new-todo" placeholder="What needs to be done?" autofocus="">
+			</header>
+
+			<section class="main" v-show="showlist">
+				<input class="toggle-all" id="toggle-all" type="checkbox" v-model="allDone">
+				<label for="toggle-all">Mark all as complete</label>
+				<ul class="todo-list">
+					<li v-for="(todo,index) in filteredTodoList" :key="'todo-' + index" :class="{completed: todo.checked , editing: index === editingIndex}">
+						<div class="view">
+							<input class="toggle" type="checkbox" v-model="todo.checked">
+							<label @dblclick="editTodo(index)">{{todo.text}}</label>
+							<button class="destroy" @click="deleteTodo(todo)"></button>
+						</div>
+						<input class="edit" v-focus='index === editingIndex' v-model="todo.text" @keyup.enter="saveTodo(todo)" @blur="saveTodo(todo)">
+					</li>
+				</ul>
+			</section>
+
+			<footer class="footer" v-show="showlist">
+				<span class="todo-count"><strong>{{activeCount}}</strong> items left</span>
+				<ul class="filters">
+					<li>
+						<a :class="{selected:visibility === 'all'}" href="#/" @click="visibility = 'all'">All</a>
+					</li>
+					<li>
+						<a :class="{selected:visibility === 'active'}" href="#/active" @click="visibility = 'active'">Active</a>
+					</li>
+					<li>
+						<a :class="{selected:visibility === 'completed'}" href="#/completed" @click="visibility = 'completed'">Completed</a>
+					</li>
+				</ul>
+
+				<button class="clear-completed" @click="clearCompleted" v-show="completedCount > 0">Clear completed</button>
+
+			</footer>
+		</section>
+		<script type="text/javascript">
+			//注册一个全局自定义指令v-focus
+			Vue.directive('focus', {
+				inserted: function(el) {
+					el.focus()
+				},
+				update(el) {
+       				el.focus();
+      			}
+			});
+
+			var filters = {
+				all: function(todos) {
+					return todos;
+				},
+				active: function(todos) {
+					return todos.filter(function (todo) {
+						return !todo.checked;
+					});
+				},
+				completed: function(todos) {
+					return todos.filter(function(todo) {
+						return todo.checked;
+					});
+				}
+			};
+			var visibility = location.hash.substr(location.hash.indexOf('/') + 1);
+			visibility = visibility === '' ? 'all' : visibility
+
+			let vm = new Vue({
+				el: ".todoapp",
+				data: {
+					newtodo: '',
+					editingIndex: -1,
+					visibility: visibility,
+					todolist: todoStorage.fetch()
+				},
+				//观察属性变化
+				watch: {
+					todolist: {
+						deep: true,
+						handler: todoStorage.save
+					}
+				},
+				methods: {
+					newTodo() {
+						this.newtodo = this.newtodo.trim();
+						if(this.newtodo.length < 1) {
+							return;
+						}
+						this.todolist.unshift({
+							text: this.newtodo,
+							checked: false
+						})
+						this.newtodo = ''
+					},
+					deleteTodo(todo) {
+						this.todolist = _.without(this.todolist, todo);
+					},
+					editTodo(index) {
+						this.editingIndex = index;
+					},
+					saveTodo(todo) {
+						this.editingIndex = -1;
+						if(todo.text.trim().length < 1) {
+							this.deleteTodo(todo)
+						}
+					},
+					clearCompleted() {
+						return filters.completed(this.todoList).length;
+					}
+				},
+				computed: {
+					showlist() {
+						return this.todolist.length > 0;
+					},
+					activeCount() {
+						return filters.active(this.todolist).length;
+					},
+					completedCount() {
+						return filters.completed(this.todolist).length;
+					},
+					allDone:{
+						get() {
+							return this.activeCount === 0;
+						},
+						set(value) {
+							this.todolist.forEach(todo => {
+								todo.checked = value
+							});
+						}
+					},
+					filteredTodoList: function() {
+						return filters[this.visibility](this.todolist);
+					}
+				}
+			})
+		</script>
+	</body>
+
+</html>
